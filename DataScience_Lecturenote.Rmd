@@ -155,62 +155,60 @@ write.table(hotdogs,file='newhotdogs.tsv',row.names = F, sep='\t')
 ```
 
 ### 유용한 함수 사용
-사용자 정의 함수 함수명 <- function(변수){return(출력값)}
-
+사용자 정의 함수 함수명 <- function(변수){return(출력값)}  
+runif(개수) ->0~1 에 대해 난수생성하는것(set.seed(2018)등 숫자설정하면 난수가 똑같이나옴)  
+apply(x,margin,function) margin -> 1=row, 2=column 즉 dataframe을 슬라이스내서 그걸로 함수적용하는것
+* lapply(x,function) -> listapply라고 보면됨
+* sapply(x,function) -> 결과가 벡터나 행렬로 나옴  #sapply(x,function(x){return값}) -> 익명 함수
+* tapply는 행렬 기준임 tapply(다룰 백터, 그룹백터 혹은 그룹으로 나눌만한 조건, function)
+* aggregate(종속변수~독립변수, data=어떤데이터, function)
+* sort(백터, decreasing=T)
+* order(백터) 결과는 정렬되는 인덱스 백터가 나옴 **sort는 order을 내포하고 있음**
+* 즉 order는 기준을 설정하고 데이터 프레임 내 정렬할 때 쓰기 좋음
+* sample(x,샘플개수,replace=False) 
+* split(df, split_var) ->데이터 프레임을 어떤 기준으로 쪼개서 리스트로 나타내주는 것
+* subset(dataframe, 조건)
+* merge(df1,df2)
+* which(조건) ->조건을 충족한 인덱스를 찾는것 위치를 찾는것
+* cut(vector, breaks = c(0,2,4,6), label=c(1,2,3),right) -> 명목형 변수로 나타낼 때
+* quantile->기본이 4분위수 하지만 probs로 내가 원하는 퍼센테이지 볼 수 있음
+* paste 1. 문자끼리 붙이기 2. 벡터 인덱스 같은것끼리 붙이기
 ```{r}
-#runif(개수) ->0~1 에 대해 난수생성하는것 set.seed(2018)등 숫자설정하면 난수가 똑같이나옴
-#apply(x,margin,function) margin -> 1=row, 2=column 즉 dataframe을 슬라이스내서 그걸로 함수적용하는것
+#apply
 apply(all_wars_matrix,2,mean)
 all_wars_matrix
-#lapply(x,function) -> listapply라고 보면됨
-#sapply(x,function) -> 결과가 벡터나 행렬로 나옴  #sapply(x,function(x){return값}) -> 익명 함수
-#tapply는 행렬 기준임 tapply(다룰 백터, 그룹백터 혹은 그룹으로 나눌만한 조건, function)
 tapply(iris$Sepal.Length, iris$Species, mean)
 tapply(mtcars$wt,mtcars$mpg>20, mean)
-
-#aggregate(종속변수~독립변수,data=어떤데이터,function)
-#sort(백터, decreasing=T)     order(백터) 결과는 정렬되는 인덱스 백터가 나옴 sort는 order을 내포하고 있음
-#즉 order는 기준을 설정하고 데이터 프레임 내 정렬할 때 쓰기 좋음
+#sort,order
 sort(mtcars$mpg)
 order(mtcars$mpg)
 mtcars[order(mtcars$mpg, decreasing=T),]
 iris[order(iris$Petal.Length, decreasing=T),]
-
-#sample(x,샘플개수,replace=False) 
 sample(1:150, 10,replace = FALSE)
 iris[sample(1:150, 10,replace = FALSE),]
 sample(a_vector,length(a_vector))#순서섞는것도 가능
-
-#split(df, split_var) ->데이터 프레임을 어떤 기준으로 쪼개서 리스트로 나타내주는 것
+#split
 split(mtcars,mtcars$cyl)
 split(iris,iris$Petal.Width>2)
-#subset(dataframe, 조건)
-
-#merge(df1,df2)
+#merge
 x <- data.frame(name=c("john",'bob','carol'),
                 math=c(70,80,90))
 y <- data.frame(name=c('john','bob','alice'),
                 history=c(100,80,90))
 merge(x,y)
 merge(x,y,all=T)
-
-#which(조건) ->조건을 충족한 인덱스를 찾는것 위치를 찾는것
-
-#cut-> 명목형 변수로 나타낼 때
+#cut
 mtcars$wt
 cut(mtcars$wt,breaks = c(0,2,4,6), label=c(1,2,3), right)
-
-#quantile->기본이 4분위수 하지만 probs로 내가 원하는 퍼센테이지 볼 수 있음
+#quantile
 quantile(iris$Sepal.Length, probs = c(0.1,0.9))
 cutpoint <- quantile(mtcars$mpg,probs=c(0,0.25,0.75,1))
 mtcars$fuelefficiency <- cut(mtcars$mpg,breaks=cutpoint,include.lowest = T)
-
-#paste 1. 문자끼리 붙이디 2. 벡터 인덱스 같은것끼리 붙이기 3. 
+#paste
 x <- seq(2,20.2)
 y <- LETTERS[1:10]
 paste(x,y,sep = ';')
 paste(paste(x,y), collapse = ',')
-
 outcome <- 'mpg'
 input_var <- names(mtcars)[2:6]
 paste(outcome,paste(input_var,collapse='+'),sep = '~')
