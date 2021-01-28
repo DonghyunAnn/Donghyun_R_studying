@@ -6,6 +6,14 @@ output: html_document
 ---
 Base Library
 ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "C:/Users/user/Documents/github_Rstudio_workspace/Data")
+setwd("C:/Users/user/Documents/github_Rstudio_workspace/Data")
+
+library("dplyr")
+library("tidyr")
+library("stringr")
+
 
 ```
 ## 데이터과학 2주차 강의노트
@@ -209,17 +217,14 @@ input_var <- names(mtcars)[2:6]
 paste(outcome,paste(input_var,collapse='+'),sep = '~')
 ```
 ## 데이터과학4주차 강의노트
-###Explore Data
+### Explore Data
 ```{r}
-getwd()
-setwd("C:/Users/user/Documents/github_Rstudio_workspace/Data")
-bmi<- read.csv("bmi_clean.csv",header = TRUE)
+bmi<- read.csv("C:/Users/user/Documents/github_Rstudio_workspace/Data/bmi_clean.csv",header = TRUE)
 str(bmi)
 dim(bmi)
 names(bmi)
 class(bmi)
 summary(bmi)
-library("dplyr")
 glimpse(bmi)
 #시각화
 hist(bmi$Y1980)
@@ -227,70 +232,70 @@ plot(x=bmi$Y1980,y=bmi$Y2008)
 ```
 
 
+### Data Clearing
+* gather(df, columnname,columnval,columnname 범위) # 넓은 데이터를 좁게
+* spread(data, 쪼갤column) #근데 이걸 구분시켜줄 어떤 변수가 있어야함
+* separate(df, col, c(변수,변수, ...),sep='-'는 디폴트) 변수를 나눠주는 것 
+* unite(df,변수이름, col, col)
 
-#######################explore data########################
-
-
-######################data cleaning########################
-library("tidyr")
-#gather(df, columnname,columnname 범위) # 넓은 데이터를 좁게
+```{r}
 wide_df <- data.frame(col = c('X', 'Y'), A = c(1,4), B = c(2,5), C = c(3,6))
 long_df <- gather(wide_df,my_key, my_val, 2:4)
-#spread(data, 쪼갤column) #근데 이걸 구분시켜줄 어떤 변수가 있어야함
 spread(long_df,my_key,my_val)
-#separate(df, col, c(변수,변수, ...),sep='-'는 디폴트) 변수를 나눠주는 것 
-#unite(df,변수이름, col, col)
-
 #exercise01
 bmi_long <- gather(bmi, year, bmi_val, 2:30)
+bmi_long
 bmi_wide <- spread(bmi_long, year,bmi_val)
+bmi_wide
 #exercise02
-bmic <- read.csv('bmi_cc.csv', header=TRUE)
+bmic <- read.csv('C:/Users/user/Documents/github_Rstudio_workspace/Data/bmi_cc.csv', header=TRUE)
 head(bmic)
 bmic_clean <- separate(bmic,Country_ISO,c('Country','ISO'),sep='/')
 unite(bmic_clean,Country_ISO,Country,ISO, sep='/')
+```
 
-###############type conversion 
-class()
-as.logical()
-as.numeric()
+### Type Conversion 
+* class()
+* as.logical()
+* as.numeric()
+* library('lubridate') => ymd, mdy <-  date, hms <- time
+```{r}
 date <- c('2010-10-01','2010-12-31')
 summary(as.Date(date))
-#library('lubridate')
-#ymd, mdy <-  date, hms <- time
-
-###############string manipulation
-library(stringr)
-str_trim()#좌우 공백제거
-str_pad(변수, with=숫자, side='left', pad='0')#자리수맞춰주기
-str_detect(vector,'찾고싶은거')
-str_replace(vector,'빼고싶은거','넣고싶은거')
-
-tolower()#소문자
-toupper()#대문자
-
+```
+### String Manipulation
+* str_trim() :좌우 공백제거
+* str_pad(변수, with=숫자, side='left', pad='0') :자리수맞춰주기
+* str_detect(vector,'찾고싶은거')
+* str_replace(vector,'빼고싶은거','넣고싶은거')
+* tolower() : 소문자
+* toupper() : 대문자
+```{r}
 #exercise3
-students2 <- read.csv('students2.csv',header=TRUE,stringsAsFactors = F)
+students2 <- read.csv('C:/Users/user/Documents/github_Rstudio_workspace/Data/students2.csv',header=TRUE,stringsAsFactors = F)
 str(students2)
 library('lubridate')
 students2$dob <- ymd(students2$dob)
 students2$nurse_visit <- ymd_hms(students2$nurse_visit)
 str(students2)
+
 #exercise4
 str_detect(students2$dob,'1997')
 students2$sex <- str_replace(students2$sex,'F','Female')
-students2$sex <-str_replace(students2$sex,'M','Male')
+students2$sex <- str_replace(students2$sex,'M','Male')
 head(students2)
+```
 
-#결측치
-is.na(df)# TRUE FALSE로 결과치 나옴
-any(is.na(df))# 결측치가 있냐
-sum(is.na(df))# 개수새기
-complete.cases(df)#결측치가 하나도 없는 행=TRUE
-df[complete.cases(df),]#na가 없는 행
-na.omit(df)#na행 다 날려버리기기  
+### NA Handling
+* is.na(df) : TRUE FALSE로 결과치 나옴
+* any(is.na(df)) : 결측치가 있냐
+* sum(is.na(df)) : 개수새기
+* complete.cases(df) : 결측치가 하나도 없는 행=TRUE
+* df[complete.cases(df),] : na가 없는 행
+* na.omit(df) : na행 다 날려버리기기  
 
-students3 <- read.csv('students3.csv',header=TRUE,stringsAsFactors = F)
+```{r}
+students3 <- read.csv('C:/Users/user/Documents/github_Rstudio_workspace/Data/students3.csv',header=TRUE,stringsAsFactors = F)
 str(students3)
 attach(students3)
 summary(age)
@@ -300,4 +305,6 @@ hist(absences)
 students3$absences <- str_replace(absences,'-1','NA')
 students3
 str_detect(absences,'NA')
+```
+
 
