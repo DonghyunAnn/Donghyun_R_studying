@@ -341,11 +341,20 @@ loan_model <- rpart(outcome ~ ., data=loans, method='class',
 loan_model_pruned <- prune(loan_model,cp=0.0014) # 이런 식으로 결정
 ```
 ###K Nearest Neighbors
-* pred <- knn(knowndata,unknowndata,knowndataclass)
+* pred <- knn(train, test, cl, k = 1, l = 0, prob = FALSE, use.all = TRUE)
+- train : 훈련 데이터셋 (matrix or data frame)
+- test : 테스트 데이터셋 (matrix or data frame)
+- cl: 훈련 데이터셋의 그룹(class) 정보 (factor)
+- k : 이웃(neighbour)의 수
+- l : 명확한 결정을 위한 최소 유효 수, 그렇지 않은 경우 의심
+- prob: 만약 이것이 트루라면, 프로브 속성에서 당첨된 비율을 반환한다.
+- use.all: 만약 트루라면, K번째의 최대치에 해당하는 모든 거리가 포함된다. 거짓이면 k의 이웃 포인트를 정확히 사용하기 위해 K번째와 같은 거리를 무작위로 선택한다.
 * 유클리디안 거리를 구하기 위해 표준화를 시켜야 함
+
 ```{r}
 wbcd <- read.csv("https://github.com/hbchoi/SampleData/raw/master/wisc_bc_data.csv",stringsAsFactors=F)
 wbcd <- wbcd[,-1]
+wbcd$diagnosis <- ifelse(wbcd$diagnosis=='B',' Benign','Malignant')
 table(wbcd$diagnosis)
 
 #min-max normalization for Euclidean Distance
@@ -361,7 +370,7 @@ wbcd_test <- wbcd_norm[470:569,]
 wbcd_train_label <- wbcd[1:469,1]
 wbcd_test_label <- wbcd[470:569,1]
 
-# k개수 정한것
+# k개수는 총 행 개수의 루트로 구했음
 sqrt(nrow(wbcd_train))
 wbcd_test_pred <- knn(train=wbcd_train,test=wbcd_test,cl=wbcd_train_label,k=21)
 #accuracy
