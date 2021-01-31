@@ -16,7 +16,8 @@ library("stringr")
 library('rpart') # Decision Tree
 library('rpart.plot') # Decision Tree
 library('class') #Knearest
-
+library('ROCR') #AUC 그래프
+library('ggplot2') #시각화
 ```
 ## 데이터과학 2주차 강의노트
   
@@ -386,34 +387,129 @@ head(attributes(wbcd_test_pred)$prob)
 head(wbcd_test_pred)
 wbcd_test_pred_prob <-  ifelse(wbcd_test_pred == 'M', attributes(wbcd_test_pred)$prob, 1-attributes(wbcd_test_pred)$prob)
 head(wbcd_test_pred_prob)
-
+```
 ###시각화 AUC
-library(ROCR)
-plot(performance(prediction(wbcd_test_pred_prob,wbcd_test_label=='M'),'tpr','fpr'))
+```{r}
+library('ROCR')
+plot(performance(prediction(wbcd_test_pred_prob,wbcd_test_label=='Malignant'),'tpr','fpr'))
 calAUC <- function(predCol,targetCol){
   perf <- performance(prediction(predCol,targetCol),'auc')
   as.numeric(perf@y.values)
 }
 
-calAUC(wbcd_test_pred_prob,wbcd_test_label=='M')
-performance(prediction(wbcd_test_pred_prob,wbcd_test_label=='M'),'auc')
-
+calAUC(wbcd_test_pred_prob,wbcd_test_label=='Malignant')
+performance(prediction(wbcd_test_pred_prob,wbcd_test_label=='Malignant'),'auc')
 
 #adjusting threshold
 threshold <- 0.1
-wbcd_test_pred_new <- ifelse(wbcd_test_pred_prob > threshold, 'M','B')
+wbcd_test_pred_new <- ifelse(wbcd_test_pred_prob > threshold, 'Malignant','Benign')
 cmat <- table(wbcd_test_label, wbcd_test_pred_new)
 
 #accuracy
 mean(wbcd_test_label == wbcd_test_pred_new)
 precision <- cmat[2,2]/sum(cmat[,2])
 recall <- cmat[2,2]/sum(cmat[2,])
+precision
+recall
 ```
 
+###더미변수
+* one hot encoding
+* library(caret)
+* predict(dummyVars(~cbwd,data=data1),data1)
 
+## 데이터과학 6주차 강의노트
+###linear model
+* model <- lm(outcome~independent,data=train)
+* prediction <- predict(model,test)
+* 명목형 변수들은 자동으로 더미 변환이되어 계산되는데, #factor개수 -1 로 진행됨 (000 100 010 001 이렇게)
+* 명목형변수 level 2인 경우 알파벳 순으로 먼저 오는게 reference 값
+```{r}
+#data load
+load(url('https://github.com/hbchoi/SampleData/raw/master/insurance.RData'))
+str(insurance)
+summary(insurance)
+#test train set
+rgroup <- runif(nrow(insurance))
+train <- subset(insurance, rgroup<=0.8)
+test <- subset(insurance,rgroup>0.8)
+#model & predict
+ins_model <- lm(charges~age + sex + bmi+children + smoker + region,train)
+train$pred <- predict(ins_model,train)
+test$pred <- predict(ins_model,test)
+#function
+calcrmse <- function(real,estimation){
+  return(sqrt(mean((real-estimation)**2)))
+}
+calr2 <- function(real,estimation){
+  rss <- sum((real-estimation)**2)
+  sst <- sum((real-mean(real))**2)
+  return(1-rss/sst)
+}
 
-#######더미변수########
-#dummy coding
-#one hot encoding
-library(caret)
-#predict(dummyVars(~cbwd,data=data1),data1)
+calcrmse(train$charges,train$pred)
+calr2(train$charges,train$pred)
+calcrmse(test$charges,test$pred)
+calr2(test$charges,test$pred)
+summary(ins_model)
+```
+###시각화
+```{r}
+ggplot(train,aes(x=pred, y=charges))+
+  geom_point(alpha=0.2, col='black')+
+  geom_smooth()+
+  geom_line(aes(x=charges,y=charges),col='blue',linetype=2)
+
+ggplot(train,aes(x=pred,y=pred-charges))+ 
+  geom_point(alpha=0.2,col='black')+
+  geom_smooth()+
+  geom_hline(yintercept=0,col='blue',linetype=2)
+```
+#### 모형 개선을 위해 다항 회귀를 할 수 도 있고, 교호작용항을 넣을 수도 있다.
+* lm(outcome~va1 * var2) 이렇게 설정 시 var1, var2,var1*var2 다들어감
+```{r}
+#모형개선
+train$bmi30 <- ifelse(train$bmi>=30,1,0)
+test$bmi30 <- ifelse(test$bmi>=30,1,0)
+ins_model <- lm(charges~age+I(age^2)+sex+bmi+children+bmi30*smoker+region, train)
+train$pred <- predict(ins_model,train)
+test$pred <- predict(ins_model,test)
+
+calcrmse(train$charges,train$pred)
+calr2(train$charges,train$pred)
+calcrmse(test$charges,test$pred)
+calr2(test$charges,test$pred)
+summary(ins_model)
+```
+
+###logistic medel
+* log(odds)= log(p/(1-p))
+* log(p/(1-p))= ax + b -> p = 1/(1+e^(-(ax+b)))
+* 회귀식 ax+b 가 0보다 크냐 작으냐에 따라 달라진다
+```{r}
+#data load
+load(url('https://github.com/hbchoi/SampleData/raw/master/NatalRiskData.rData'))
+str(sdata)
+#train test set
+train <- sdata[sdata$ORIGRANDGROUP<=5,]
+test <- sdata[sdata$ORIGRANDGROUP>5,]
+#variable setting
+complications <- c('ULD_MECO','ULD_PRECIP','ULD_BREECH')
+riskfactors <- c('URF_DIAB','URF_CHYPER','URF_PHYPER','URF_ECLAM')
+y <- 'atRisk'
+x <- c('PWGT','UPREVIS','CIG_REC','GESTREC3','DPLURAL',complications,riskfactors)
+fmla <- paste(y,paste(x,collapse='+'),sep='~')
+fmla
+#logistic model
+model <- glm(fmla,data=train,family=binomial(link='logit'))
+train$pred <- predict(model,newdata=train,type='response') #newdata=예측하고자하는 데이터
+test$pred <-predict(model,newdata=test,type='response') #type='response'로 해주어야 확률값이 나옴
+#예측된 값 보기
+test[20:40,c('pred','atRisk')]
+aggregate(pred~atRisk,data=train,mean)
+aggregate(pred~atRisk,data=test,mean)
+ggplot(train, aes(x=pred,color=atRisk,linetype=atRisk))+geom_density()
+#threshold에 대한 pnull-> 전체에 적용했을 때 확률, 1000명 전체에 응급대처했을 때 20명0.02, -> 그래서 threshold를 적용해서 예측했을 때 맞을 확률이 얼마나 높은지 확인하는거
+#p/pnull=enrich
+```
+
