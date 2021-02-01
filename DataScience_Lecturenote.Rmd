@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "C:/Users/user/Documents/github_Rstudio_workspace/Data")
 setwd("C:/Users/user/Documents/github_Rstudio_workspace/Data")
 
-library("dplyr")
+library("dplyr") #%>%
 library("tidyr")
 library("stringr")
 library('rpart') # Decision Tree
@@ -123,7 +123,6 @@ my_list <- list('a'=a_vector,'starwars'=star_wars_matrix,'cars'=mtcars)
 names(my_list) <- c('a','starwars','car')
 #정보 부르는법 my_list[[1]] 1자리에 name,혹은 my_list$starwars
 ```
-------------------------------------------------------------------------------
 ## 데이터과학 3주차 강의노트  
   
 ### if문
@@ -247,14 +246,14 @@ long_df <- gather(wide_df,my_key, my_val, 2:4)
 spread(long_df,my_key,my_val)
 #exercise01
 bmi_long <- gather(bmi, year, bmi_val, 2:30)
-bmi_long
+#bmi_long
 bmi_wide <- spread(bmi_long, year,bmi_val)
-bmi_wide
+#bmi_wide
 #exercise02
 bmic <- read.csv('C:/Users/user/Documents/github_Rstudio_workspace/Data/bmi_cc.csv', header=TRUE)
 head(bmic)
 bmic_clean <- separate(bmic,Country_ISO,c('Country','ISO'),sep='/')
-unite(bmic_clean,Country_ISO,Country,ISO, sep='/')
+#unite(bmic_clean,Country_ISO,Country,ISO, sep='/')
 ```
 
 ### Type Conversion 
@@ -306,10 +305,129 @@ summary(absences)
 hist(age)
 hist(absences)
 students3$absences <- str_replace(absences,'-1','NA')
-students3
+#students3
 str_detect(absences,'NA')
 ```
-## 데이터과학 5주차 강의노트
+## 데이터과학 9주차 강의노트
+* precision=TP/TP+FP(2종오류)(참이라고 예측한거) |  recall=TP/TP+FN(1종오류)(사실이 참인거)
+* threshold가 증가 -> precision증가 recall 감소 | threshold 감소 ->precision감소 recall증가 
+* AUC curve-> threshold와 관계없이 모델의 기능을 알 수 있는 법(여러가지 threshold를 넣어서 그 점들을 이어서 만드는 것이다)
+* True positive rate=전체 actual참 값 중에  True 인 값 | False Positive rate=전체 actual 거짓 값 중에 못 찾아낸 비율
+* TPR=TP/TP+FN FPR=FP/FP+FN 
+* 0.9~1 -> excellent\0.8~0.9->good\00.7~0.8 -> fair
+
+### 명목형 변수로 model만들기
+```{r}
+#Data load
+load(url('https://github.com/hbchoi/SampleData/raw/master/adult.RData'))
+set.seed(2020)
+#train, test set 설정
+n_sample <- nrow(adult)
+rgroup <- runif(n_sample)#균등분포에서의 난수생성
+adult.train <- subset(adult,rgroup<=0.8)
+adult.test <- subset(adult, rgroup>0.8)
+#table 쓰는 법
+table(adult.train$income_mt_50k)#명목형 변수 빈도를 보여줌
+prop.table(table(adult.train$income_mt_50k))#소수점 비율로 보여줌
+# 모델 전 처리
+tble <- table(adult.train$occupation,adult.train$income_mt_50k)#row,column
+sv_model_job <- prop.table(tble,margin = 1)[,2] # 뒤에 [,] 붙여서 원하는 행 열 뽑아낼 수 있음
+adult.train$est_prob <- sv_model_job[adult.train$occupation]
+#간단한 모델 만들기
+threshold <- 0.4
+adult.train$prediction <- adult.train$est_prob>threshold
+head(adult.train[,c('occupation','est_prob','prediction','income_mt_50k')],10)
+#얼마나 맞췄는지 확인
+conf.table <- table(pred=adult.train$prediction, actual=adult.train$income_mt_50k)
+conf.table
+accuracy <- sum(diag(conf.table))/sum(conf.table)
+accuracy
+#이후에는 train set에서 같은 기준을 적용했을 때 어느 정도 나오는지를 확인해야 함
+```
+####명목형 변수로 model만들기 exercise
+```{r}
+# 모델 전 처리
+tble <- table(adult.train$education,adult.train$income_mt_50k)
+sv_model_job <- prop.table(tble,margin = 1)[,2]
+adult.train$est_prob <- sv_model_job[adult.train$education]
+#역치0.5
+threshold <- 0.5
+adult.train$prediction <- adult.train$est_prob>threshold
+conf.table <- table(pred <- adult.train$prediction,actual <- adult.train$income_mt_50k)
+accuracy <- sum(diag(conf.table))/sum(conf.table)
+accuracy
+recall <-  sum(conf.table[2,2])/sum(conf.table[,2])
+recall
+precision <- sum(conf.table[2,2])/sum(conf.table[2,])
+precision
+#역치0.6
+threshold <- 0.6
+adult.train$prediction <- adult.train$est_prob>threshold
+conf.table <- table(pred <- adult.train$prediction,actual <- adult.train$income_mt_50k)
+accuracy <- sum(diag(conf.table))/sum(conf.table)
+accuracy
+recall <-  sum(conf.table[2,2])/sum(conf.table[,2])
+recall
+precision <- sum(conf.table[2,2])/sum(conf.table[2,])
+precision
+#test set 기준으로 얼마나 맞았는지 확인
+tble <- table(adult.test$education,adult.test$income_mt_50k)
+sv_model_job <- prop.table(tble,margin = 1)[,2]
+adult.test$est_prob <- sv_model_job[adult.test$education]
+threshold <- 0.5
+adult.test$prediction <- adult.test$est_prob>threshold
+conf.table <- table(actual <- adult.test$prediction, actual <- adult.test$income_mt_50k)
+accuracy <- sum(diag(conf.table))/sum(conf.table)
+accuracy
+#AUC curve Visualization
+plot(performance(prediction(adult.test$est_prob,adult.test$income_mt_50k),'tpr','fpr')) #앞변수로 뒷변수를 얼마나 잘 예측하 수 있느냐
+
+```
+
+####연속형을 명목형으로 바꿔서 분석 exercise
+```{r}
+adult.train$age_group <- cut(adult.train$age, breaks=c(0,20,30,40,50,60, Inf),labels=c('under20','20s','30s','40s','50s','over60'), 
+                             right = F)
+tble <- table(adult.train$age_group,adult.train$income_mt_50k)
+sv_model_age <- prop.table(tble,margin=1)[,2]
+adult.train$est_prob <- sv_model_age[adult.train$age_group]
+threshold <- 0.3
+adult.train$predictoni <- adult.train$est_prob >threshold
+#accuracy 사용자 정의 함수
+get_accuracy <- function(pred,actual){
+  tble <- table(pred,actual)
+  return(round(sum(diag(tble))/sum(tble),3))
+}
+get_accuracy(adult.train$prediction,adult.train$income_mt_50k)
+```
+###연속형 변수 model 만들기 회귀분석
+* mse와 rmse로 모형이 정확한지 알 수 있음 이건 log를 씌웠으니 그 점까지 고려해야함
+* 표준편차보다 더 작아야 의미가 있다
+* 회귀 분석 생각해보면 SST(y_i-E(y))^2=SSreg(E(y)-yhat)^2+SSE(y_i-yhat)^
+
+```{r}
+#Data load
+load(url('https://github.com/hbchoi/SampleData/raw/master/insurance.RData'))
+#Data Browse
+hist(insurance$charges)
+plot(density(log(insurance$charges)))#log를 씌우면 편포가 정규모양으로 바뀔 수 있음
+insurance$logcharges <- log10(insurance$charges)
+#test, training set
+set.seed(2020)
+n_sample <- nrow(insurance)
+rgroup <- runif(n_sample)
+train <- subset(insurance,rgroup<=0.8)
+test <- subset(insurance,rgroup>0.8)
+#model 전처리
+sv_reg_smoker <- tapply(train$logcharges, train$smoker,mean)
+train$pred <- sv_reg_smoker[train$smoker]
+train$error <- train$logcharges-train$pred
+msetrain <- mean(train$error**2)
+msetrain
+sqrt(msetrain)
+```
+
+## 데이터과학 11주차 강의노트
 ### Decision Tree
 * 대출클럽같은 곳에 많이 쓰임
 * Entropy = 혼잡도 : 데이터가 비슷하게 섞여있으면 높고, 한가지 종류만 있으면 낮음
@@ -418,7 +536,7 @@ recall
 * library(caret)
 * predict(dummyVars(~cbwd,data=data1),data1)
 
-## 데이터과학 6주차 강의노트
+## 데이터과학 13주차 강의노트
 ###linear model
 * model <- lm(outcome~independent,data=train)
 * prediction <- predict(model,test)
@@ -513,3 +631,64 @@ ggplot(train, aes(x=pred,color=atRisk,linetype=atRisk))+geom_density()
 #p/pnull=enrich
 ```
 
+## 데이터과학 15주차 강의노트
+###군집분석
+* unsupervised method는 명확한 판단기준은 없음
+* Total within sum of square(wss): centroid와 군집내 변수들간의 거리 제곱의 평균, 작을 수록 좋다. cluster 개수가 많을 수록 값이 낮아지는 한계점이 있음
+* Calinski-Harabasz index: (Bss(k)/k-1)/(wss(k)/n-k) |Between sum of square(bss)= tss-wss
+```{r}
+#데이터셋 만들기
+set.seed(2020)
+synth.data<-data.frame(x1 =c(rnorm(20, 3, 1.5), rnorm(20,0,1), rnorm(20,5,1)), 
+                       x2 =c(rnorm(20, 0, 1), rnorm(20,4,1), rnorm(20,5,1)))
+ndata<-nrow(synth.data)#행개수
+ndim<-ncol(synth.data)#열개수
+synth.data%>%ggplot(aes(x =x1, y=x2)) +geom_point(shape =1) +theme_bw()
+#유클리디안거리 함수
+u_dist<-function(u, v){sqrt(sum((u -v) **2))}
+#초기 central 값
+set.seed(2020)
+k <-3
+cents <-data.frame(cl=1:k)
+cents <-cbind(cents, synth.data[sample(1:60, k),])
+
+#군집분석 plot
+synth.data$cl<-factor(rep(1, ndata), levels =1:k)
+synth.data%>%ggplot(aes(x =x1, y=x2, col =cl)) +geom_point(shape =1) +theme_bw() +geom_point(data =cents, shape =4, col ='red')
+
+#군집분석 반복문
+while(TRUE){
+  # data assignment to cluster
+  new_cl<-apply(synth.data[,1:ndim], 1, function(x) {
+    which.min(
+      apply(cents[,-1], 1, function(y) {
+        u_dist(y, x)
+      })
+    )
+  })
+  if(all(synth.data$cl==factor(new_cl))) break
+  
+  synth.data$cl<-factor(new_cl)
+  cents <-synth.data%>%group_by(cl)%>%
+    summarise(x1 =mean(x1), x2 =mean(x2)) 
+}
+
+#군집분석 전처리
+protein <-read.table("C:/Users/user/Documents/github_Rstudio_workspace/Data/protein.txt", sep="\t", header=TRUE)
+vars.to.use<-colnames(protein)[-1] #나라 없애기
+pmatrix<-scale(protein[,vars.to.use]) #  표준화
+pcenter<-attr(pmatrix, "scaled:center") # 평균 저장
+pscale<-attr(pmatrix, "scaled:scale") #표준편차 저장
+#군집분석
+pclusters<-kmeans(pmatrix, 5, nstart=100, iter.max=100) # 2번쨰=k값, 100번반복하겠다
+summary(pclusters)
+pclusters$centers # 각각 군집의 편균값 어떤 특징인지 볼 수 있음
+pclusters$size # 각 군집당 몇개인가
+#지표 추출
+pclusters$withinss
+(wss<-sum(pclusters$withinss))
+(tss<-pclusters$totss)
+(bss<-pclusters$betweenss)
+ch.index<-(bss/(k-1)) /(wss/(ndata-k))
+print(sprintf('CH index of this clustering is %.f', ch.index))
+```
